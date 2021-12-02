@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:battery_plus/battery_plus.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,58 +12,112 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    return const MaterialApp(
+      title: 'Battery Plus Demo',
+      // theme: ThemeData(
+      //   primarySwatch: Colors.blue,
+      // ),
+      home: BatteryPage(title: 'Battery Plus Demo'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-  final String title;
+class BatteryPage extends StatefulWidget {
+  const BatteryPage({Key? key, this.title}) : super(key: key);
+
+  final String? title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _BatteryPageState createState() => _BatteryPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _BatteryPageState extends State<BatteryPage> {
+  //バッテリーのインスタンスを取得
+  final Battery _battery = Battery();
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  //バッテリーの状態(充電中等)をStateとして保持
+  BatteryState? _batteryState;
+  //StreamSubscriptionで監視する（初期化はinitStateで行う）
+  StreamSubscription<BatteryState>? _batteryStateSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    //Batteryの状態の変化を検知し、setStateするように設定
+    _batteryStateSubscription =
+        _battery.onBatteryStateChanged.listen((BatteryState state) {
+          setState(() {
+            _batteryState = state;
+          });
+        });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: const Text('Plugin example app'),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+          children: [
+
+            //バッテリーの状態を表示
+            Text('$_batteryState'),
+            ElevatedButton(
+              onPressed: () async {
+                //充電残量の取得
+                final batteryLevel = await _battery.batteryLevel;
+                showDialog<void>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    content: Text('Battery: $batteryLevel%'),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text('OK'),
+                      )
+                    ],
+                  ),
+                );
+              },
+              child: const Text('Get battery level'),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
+            ElevatedButton(
+                onPressed: () async {
+                  //パワーセーブモードか否かの取得
+                  final isInPowerSaveMode = await _battery.isInBatterySaveMode;
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      content: Text('Is on low power mode: $isInPowerSaveMode'),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: const Text('OK'),
+                        )
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('Is on low power mode'))
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
     );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    //Subscriptionのストップ
+    if (_batteryStateSubscription != null) {
+      _batteryStateSubscription!.cancel();
+    }
   }
 }
