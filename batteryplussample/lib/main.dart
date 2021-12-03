@@ -14,9 +14,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'Battery Plus Demo',
-      // theme: ThemeData(
-      //   primarySwatch: Colors.blue,
-      // ),
       home: BatteryPage(title: 'Battery Plus Demo'),
     );
   }
